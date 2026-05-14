@@ -779,12 +779,247 @@
             location.reload();
         }
 
-        function showApp(username) {
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatMiFan</title>
+    <style>
+        :root { --primary: #0084ff; --bg: #f0f2f5; }
+        body { font-family: Arial, sans-serif; background: var(--bg); margin: 0; }
+        .hidden { display: none !important; }
+        
+        /* Login & Register */
+        .auth-container { width: 300px; margin: 100px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; }
+        input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
+        button { width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer; }
+
+        /* Main Layout */
+        header { background: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .logo { color: var(--primary); font-weight: bold; font-size: 24px; }
+        nav button { background: none; color: #65676b; font-size: 20px; width: 40px; border-radius: 50%; }
+
+        /* Content Area */
+        .container { max-width: 600px; margin: 20px auto; }
+        .post-card, .user-item { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #ddd; vertical-align: middle; }
+        
+        /* Messenger View */
+        .chat-box { height: 400px; overflow-y: auto; background: #fff; padding: 10px; border: 1px solid #ddd; }
+        .msg { margin: 5px 0; padding: 8px 12px; border-radius: 18px; max-width: 70%; width: fit-content; }
+        .msg.sent { background: var(--primary); color: white; margin-left: auto; }
+        .msg.received { background: #e4e6eb; color: black; }
+    </style>
+</head>
+<body>
+
+<!-- TRANG ĐĂNG NHẬP / ĐĂNG KÝ -->
+<div id="auth-screen" class="auth-container">
+    <h2 class="logo">ChatMiFan</h2>
+    <div id="login-form">
+        <input type="text" id="login-user" placeholder="Tên đăng nhập">
+        <button onclick="login()">Đăng nhập</button>
+        <p onclick="toggleAuth(false)" style="cursor:pointer; color: blue;">Tạo tài khoản mới</p>
+    </div>
+    <div id="reg-form" class="hidden">
+        <input type="text" id="reg-user" placeholder="Nhập tên tài khoản">
+        <button onclick="register()">Đăng ký</button>
+        <p onclick="toggleAuth(true)" style="cursor:pointer; color: blue;">Đã có tài khoản?</p>
+    </div>
+</div>
+
+<!-- GIAO DIỆN CHÍNH -->
+<div id="main-app" class="hidden">
+    <header>
+        <div class="logo">ChatMiFan</div>
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="Tìm bạn bè..." onkeyup="searchUser()">
+        </div>
+        <nav>
+            <button onclick="showPage('home')">🏠</button>
+            <button onclick="showPage('messenger')">💬</button>
+            <button onclick="showPage('profile')">👤</button>
+        </nav>
+    </header>
+
+    <div id="page-home" class="container">
+        <div class="post-card">
+            <input type="text" id="post-text" placeholder="Bạn đang nghĩ gì?">
+            <input type="file" id="post-file" accept="image/*,video/*">
+            <button onclick="createPost()">Đăng bài</button>
+        </div>
+        <div id="newsfeed"></div>
+    </div>
+
+    <div id="page-messenger" class="container hidden">
+        <h3>Bạn bè</h3>
+        <div id="friend-list"></div>
+        <hr>
+        <div id="chat-window" class="hidden">
+            <button onclick="closeChat()">⬅️ Quay lại</button>
+            <div id="chat-content" class="chat-box"></div>
+            <input type="text" id="chat-input" placeholder="Nhắn tin...">
+            <button onclick="sendMessage()">Gửi</button>
+        </div>
+    </div>
+
+    <div id="page-profile" class="container hidden">
+        <div class="post-card" style="text-align: center;">
+            <img id="my-avatar" class="avatar" style="width:100px; height:100px;" onclick="document.getElementById('upload-avatar').click()">
+            <input type="file" id="upload-avatar" class="hidden" onchange="changeAvatar(this)">
+            <h2 id="profile-name">Tên người dùng</h2>
+            <button onclick="editName()">Đổi tên</button>
+        </div>
+        <div id="my-posts"></div>
+    </div>
+</div>
+
+<script>
+    // Giả lập Database bằng LocalStorage
+    let users = JSON.parse(localStorage.getItem('users')) || {};
+    let currentUser = null;
+    let posts = JSON.parse(localStorage.getItem('posts')) || [];
+
+    // --- HỆ THỐNG TÀI KHOẢN ---
+    function toggleAuth(isLogin) {
+        document.getElementById('login-form').classList.toggle('hidden', !isLogin);
+        document.getElementById('reg-form').classList.toggle('hidden', isLogin);
+    }
+
+    function register() {
+        let name = document.getElementById('reg-user').value.trim();
+        if(name && !users[name]) {
+            users[name] = { name: name, friends: [], requests: [], avatar: '' };
+            saveData();
+            alert("Đăng ký thành công!");
+            toggleAuth(true);
+        } else { alert("Tên đã tồn tại hoặc trống!"); }
+    }
+
+    function login() {
+        let name = document.getElementById('login-user').value.trim();
+        if(users[name]) {
+            currentUser = users[name];
             document.getElementById('auth-screen').classList.add('hidden');
-            document.getElementById('main-app').style.display = 'block';
-            document.getElementById('display-user').innerText = username;
+            document.getElementById('main-app').classList.remove('hidden');
+            loadProfile();
+            renderPosts();
+        } else { alert("Không tìm thấy tài khoản!"); }
+    }
+
+    // --- KẾT BẠN & TÌM KIẾM ---
+    function searchUser() {
+        let query = document.getElementById('search-input').value.toLowerCase();
+        if(!query) return;
+        // Logic đơn giản: Nếu tìm thấy tên khớp trong hệ thống
+        Object.keys(users).forEach(u => {
+            if(u === query && u !== currentUser.name) {
+                if(confirm("Tìm thấy " + u + ". Gửi kết bạn?")) {
+                    users[u].requests.push(currentUser.name);
+                    saveData();
+                    alert("Đã gửi yêu cầu!");
+                }
+            }
+        });
+    }
+
+    function loadProfile() {
+        document.getElementById('profile-name').innerText = currentUser.name;
+        document.getElementById('my-avatar').src = currentUser.avatar || 'https://via.placeholder.com/100';
+        checkRequests();
+    }
+
+    function checkRequests() {
+        if(currentUser.requests.length > 0) {
+            currentUser.requests.forEach((req, index) => {
+                if(confirm("Người dùng " + req + " muốn kết bạn. Chấp nhận?")) {
+                    currentUser.friends.push(req);
+                    users[req].friends.push(currentUser.name);
+                }
+                currentUser.requests.splice(index, 1);
+            });
+            saveData();
         }
-    </script>
+    }
+
+    // --- ĐĂNG BÀI ---
+    function createPost() {
+        let text = document.getElementById('post-text').value;
+        let post = { id: Date.now(), author: currentUser.name, content: text, time: new Date().toLocaleString() };
+        posts.unshift(post);
+        saveData();
+        renderPosts();
+        document.getElementById('post-text').value = "";
+    }
+
+    function renderPosts() {
+        let html = '';
+        posts.forEach(p => {
+            html += `<div class="post-card">
+                <b>${p.author}</b> <small>${p.time}</small>
+                <p>${p.content}</p>
+                ${p.author === currentUser.name ? `<button onclick="deletePost(${p.id})">Xóa bài</button>` : ''}
+            </div>`;
+        });
+        document.getElementById('newsfeed').innerHTML = html;
+        document.getElementById('my-posts').innerHTML = html; // Hiện ở cả trang cá nhân
+    }
+
+    function deletePost(id) {
+        posts = posts.filter(p => p.id !== id);
+        saveData();
+        renderPosts();
+    }
+
+    // --- CHUYỂN TRANG ---
+    function showPage(page) {
+        ['home', 'messenger', 'profile'].forEach(p => {
+            document.getElementById('page-' + p).classList.add('hidden');
+        });
+        document.getElementById('page-' + page).classList.remove('hidden');
+        if(page === 'messenger') renderFriends();
+    }
+
+    function renderFriends() {
+        let html = '';
+        currentUser.friends.forEach(f => {
+            html += `<div class="user-item" onclick="openChat('${f}')">
+                <img src="${users[f].avatar || 'https://via.placeholder.com/40'}" class="avatar">
+                <span>${f}</span>
+                <button onclick="unfriend('${f}')" style="width:auto; background:red; float:right;">Xóa</button>
+            </div>`;
+        });
+        document.getElementById('friend-list').innerHTML = html || 'Chưa có bạn bè';
+    }
+
+    // --- TIỆN ÍCH ---
+    function saveData() {
+        localStorage.setItem('users', JSON.stringify(users));
+        localStorage.setItem('posts', JSON.stringify(posts));
+    }
+
+    function changeAvatar(input) {
+        if (input.files && input.files[0]) {
+            let reader = new FileReader();
+            reader.onload = (e) => {
+                currentUser.avatar = e.target.result;
+                document.getElementById('my-avatar').src = e.target.result;
+                saveData();
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function editName() {
+        let newName = prompt("Nhập tên mới:", currentUser.name);
+        if(newName) {
+            currentUser.name = newName;
+            document.getElementById('profile-name').innerText = newName;
+            saveData();
+        }
+    }
+</script>
 </body>
 </html>
 # ChatMiFan
