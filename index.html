@@ -253,12 +253,416 @@
                 box.innerHTML = chatData.map(m => `<div style="text-align:${m.from==='me'?'right':'left'}">
                     <p style="background:${m.from==='me'?'#0084ff':'#eee'}; color:${m.from==='me'?'white':'black'}; display:inline-block; padding:5px 10px; border-radius:10px">${m.text}</p>
                 </div>`).join('');
-                box.scrollTop = box.scrollHeight;
-            },
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatminizin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary: #0084ff; --bg: #f0f2f5; --text: #1c1e21; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+        .hidden { display: none !important; }
+        
+        /* Auth Screen */
+        #auth-screen { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; text-align: center; }
+        .auth-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 320px; }
+        .auth-card input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
+        .btn-blue { background: var(--primary); color: white; }
+        .btn-green { background: #42b72a; color: white; }
 
-            closeChat: () => document.getElementById('chat-box').classList.add('hidden')
-        };
+        /* Header */
+        header { background: white; padding: 10px 5%; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .logo { color: var(--primary); font-weight: bold; font-size: 24px; cursor: pointer; }
+        .nav-icons i { font-size: 22px; margin-left: 25px; cursor: pointer; color: #65676b; position: relative; }
+        .nav-icons i.active { color: var(--primary); }
+        .badge { position: absolute; top: -5px; right: -8px; background: red; color: white; font-size: 10px; padding: 2px 5px; border-radius: 10px; }
+
+        /* Container */
+        .container { max-width: 600px; margin: 20px auto; padding: 0 10px; }
+        .card { background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+
+        /* Post Area */
+        .post-input { display: flex; flex-direction: column; gap: 10px; }
+        .post-input textarea { border: none; background: #f0f2f5; border-radius: 20px; padding: 12px 20px; resize: none; outline: none; }
+        .media-preview { width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; display: none; margin-top: 10px; }
+
+        /* Post Item */
+        .post-item { position: relative; }
+        .post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .post-header img { width: 40px; height: 40px; border-radius: 50%; }
+        .post-media img, .post-media video { width: 100%; border-radius: 8px; margin-top: 10px; }
+        .del-post { position: absolute; top: 15px; right: 15px; color: #999; cursor: pointer; }
+
+        /* Profile */
+        .profile-info { text-align: center; padding: 20px 0; }
+        .avatar-lg { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.2); cursor: pointer; }
+
+        /* Messenger Window */
+        #chat-window { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 200; display: flex; flex-direction: column; }
+        .chat-header { padding: 15px; border-bottom: 1px solid #ddd; display: flex; align-items: center; gap: 15px; }
+        .messages-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #f9f9f9; }
+        .msg { padding: 10px 15px; border-radius: 18px; max-width: 75%; font-size: 15px; line-height: 1.4; }
+        .msg.me { align-self: flex-end; background: var(--primary); color: white; }
+        .msg.them { align-self: flex-start; background: #e4e6eb; color: black; }
+        .chat-input-area { padding: 15px; display: flex; gap: 10px; border-top: 1px solid #ddd; }
+        .chat-input-area input { flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid #ddd; outline: none; }
+
+        /* Friends List */
+        .friend-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .friend-info { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .friend-info img { width: 45px; height: 45px; border-radius: 50%; }
+    </style>
+</head>
+<body>
+
+    <!-- MÀN HÌNH ĐĂNG NHẬP -->
+    <div id="auth-screen">
+        <div class="auth-card">
+            <h1 style="color: var(--primary); margin-bottom: 5px;">Chatminizin</h1>
+            <p id="auth-title">Đăng nhập để bắt đầu</p>
+            
+            <div id="login-box">
+                <input type="text" id="login-username" placeholder="Tên đăng nhập">
+                <button class="btn btn-blue" onclick="login()">Đăng nhập</button>
+                <div style="margin: 15px 0; color: #888;">──────── or ────────</div>
+                <button class="btn btn-green" onclick="toggleAuth(true)">Tạo tài khoản mới</button>
+            </div>
+
+            <div id="reg-box" class="hidden">
+                <input type="text" id="reg-username" placeholder="Nhập tên tài khoản">
+                <button class="btn btn-green" onclick="register()">Đăng ký ngay</button>
+                <p style="color: var(--primary); cursor: pointer; margin-top: 15px;" onclick="toggleAuth(false)">Quay lại đăng nhập</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÀN HÌNH CHÍNH -->
+    <div id="main-app" class="hidden">
+        <header>
+            <div class="logo" onclick="showTab('home')">chatminizin</div>
+            <div class="nav-icons">
+                <i class="fas fa-home active" id="icon-home" onclick="showTab('home')"></i>
+                <i class="fas fa-comment-dots" id="icon-msg" onclick="showTab('msg')"></i>
+                <i class="fas fa-bell" id="icon-notif" onclick="showTab('notif')"><span class="badge hidden" id="notif-count">0</span></i>
+                <i class="fas fa-user-circle" id="icon-user" onclick="showTab('profile')"></i>
+                <i class="fas fa-sign-out-alt" onclick="logout()"></i>
+            </div>
+        </header>
+
+        <div class="container">
+            <!-- TRANG CHỦ -->
+            <div id="tab-home">
+                <div class="card">
+                    <div class="post-input">
+                        <textarea id="post-content" rows="2" placeholder="Bạn đang nghĩ gì?"></textarea>
+                        <img id="preview-img" class="media-preview">
+                        <video id="preview-vid" class="media-preview" controls></video>
+                        <hr style="border: 0.5px solid #eee; width: 100%;">
+                        <div style="display: flex; gap: 20px;">
+                            <label style="cursor:pointer; color: #45bd62;"><i class="fas fa-images"></i> Ảnh/Video
+                                <input type="file" id="post-file" hidden accept="image/*,video/*" onchange="previewMedia(event)">
+                            </label>
+                            <button class="btn btn-blue" style="width: 80px; margin: 0; padding: 5px;" onclick="createPost()">Đăng</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="news-feed"></div>
+            </div>
+
+            <!-- TRANG TIN NHẮN -->
+            <div id="tab-msg" class="hidden">
+                <div class="card">
+                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                        <input type="text" id="search-friend" placeholder="Tìm tên bạn bè..." style="flex:1; padding:8px; border-radius:20px; border:1px solid #ddd;">
+                        <button class="btn btn-blue" style="width:60px; margin:0;" onclick="searchUser()"><i class="fas fa-search"></i></button>
+                    </div>
+                    <div id="search-result"></div>
+                </div>
+                <div class="card">
+                    <h3>Đoạn chat</h3>
+                    <div id="friend-list"></div>
+                </div>
+            </div>
+
+            <!-- TRANG THÔNG BÁO -->
+            <div id="tab-notif" class="hidden">
+                <div class="card">
+                    <h3>Thông báo kết bạn</h3>
+                    <div id="request-list"></div>
+                </div>
+            </div>
+
+            <!-- TRANG CÁ NHÂN -->
+            <div id="tab-profile" class="hidden">
+                <div class="card profile-info">
+                    <input type="file" id="change-avt" hidden accept="image/*" onchange="updateAvatar(event)">
+                    <img src="" id="my-avt" class="avatar-lg" onclick="document.getElementById('change-avt').click()">
+                    <h2 id="my-name">Tên người dùng</h2>
+                    <button class="btn" style="width:120px; background:#e4e6eb;" onclick="editName()">Đổi tên</button>
+                </div>
+                <div id="my-posts"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CỬA SỔ CHAT MESSENGER -->
+    <div id="chat-window" class="hidden">
+        <div class="chat-header">
+            <i class="fas fa-arrow-left" style="cursor:pointer; font-size:20px;" onclick="closeChat()"></i>
+            <img src="" id="chat-avt" style="width:35px; height:35px; border-radius:50%;">
+            <b id="chat-name">Người bạn</b>
+        </div>
+        <div class="messages-list" id="chat-msgs"></div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Aa">
+            <button style="border:none; background:none; color:var(--primary); font-size:20px; cursor:pointer;" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <script>
+        let db = JSON.parse(localStorage.getItem('minizin_db')) || { users: [], posts: [] };
+        let currentUser = JSON.parse(localStorage.getItem('minizin_session')) || null;
+        let activeChat = null;
+
+        window.onload = () => { if(currentUser) startApp(); };
+
+        function saveDB() { localStorage.setItem('minizin_db', JSON.stringify(db)); }
+
+        function toggleAuth(isReg) {
+            document.getElementById('login-box').classList.toggle('hidden', isReg);
+            document.getElementById('reg-box').classList.toggle('hidden', !isReg);
+            document.getElementById('auth-title').innerText = isReg ? "Tham gia với chúng tôi" : "Đăng nhập để bắt đầu";
+        }
+
+        function register() {
+            let name = document.getElementById('reg-username').value.trim();
+            if(!name || db.users.find(u => u.name === name)) return alert("Tên không hợp lệ hoặc đã tồn tại!");
+            let newUser = { name, avt: 'https://www.w3schools.com/howto/img_avatar.png', friends: [], requests: [], chats: {} };
+            db.users.push(newUser);
+            saveDB();
+            alert("Đăng ký xong! Hãy đăng nhập.");
+            toggleAuth(false);
+        }
+
+        function login() {
+            let name = document.getElementById('login-username').value.trim();
+            let user = db.users.find(u => u.name === name);
+            if(!user) return alert("Sai tên đăng nhập!");
+            currentUser = user;
+            localStorage.setItem('minizin_session', JSON.stringify(currentUser));
+            startApp();
+        }
+
+        function logout() {
+            localStorage.removeItem('minizin_session');
+            location.reload();
+        }
+
+        function startApp() {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            updateUI();
+            renderPosts();
+        }
+
+        function updateUI() {
+            document.getElementById('my-name').innerText = currentUser.name;
+            document.getElementById('my-avt').src = currentUser.avt;
+            renderRequests();
+            renderFriendList();
+        }
+
+        function showTab(tab) {
+            ['home', 'msg', 'notif', 'profile'].forEach(t => {
+                document.getElementById('tab-'+t).classList.add('hidden');
+                document.getElementById('icon-'+t).classList.remove('active');
+            });
+            document.getElementById('tab-'+tab).classList.remove('hidden');
+            document.getElementById('icon-'+tab).classList.add('active');
+        }
+
+        // POST LOGIC
+        function previewMedia(e) {
+            let file = e.target.files[0];
+            let reader = new FileReader();
+            reader.onload = (ex) => {
+                let isVid = file.type.includes('video');
+                document.getElementById(isVid ? 'preview-vid' : 'preview-img').src = ex.target.result;
+                document.getElementById(isVid ? 'preview-vid' : 'preview-img').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function createPost() {
+            let content = document.getElementById('post-content').value;
+            let img = document.getElementById('preview-img').src;
+            let vid = document.getElementById('preview-vid').src;
+            if(!content && !img && !vid) return;
+
+            let post = {
+                id: Date.now(),
+                author: currentUser.name,
+                avt: currentUser.avt,
+                text: content,
+                media: img || vid || null,
+                type: vid ? 'video' : 'image'
+            };
+            db.posts.unshift(post);
+            saveDB();
+            location.reload();
+        }
+
+        function renderPosts() {
+            let feed = document.getElementById('news-feed');
+            feed.innerHTML = db.posts.map(p => `
+                <div class="card post-item">
+                    ${p.author === currentUser.name ? `<i class="fas fa-times del-post" onclick="deletePost(${p.id})"></i>` : ''}
+                    <div class="post-header">
+                        <img src="${p.avt}"> <b>${p.author}</b>
+                    </div>
+                    <div>${p.text}</div>
+                    <div class="post-media">
+                        ${p.media ? (p.type === 'video' ? `<video src="${p.media}" controls></video>` : `<img src="${p.media}">`) : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deletePost(id) {
+            db.posts = db.posts.filter(p => p.id !== id);
+            saveDB();
+            renderPosts();
+        }
+
+        // FRIENDS & CHAT
+        function searchUser() {
+            let name = document.getElementById('search-friend').value;
+            let found = db.users.find(u => u.name === name && u.name !== currentUser.name);
+            let res = document.getElementById('search-result');
+            if(!found) return res.innerHTML = "Không thấy ai!";
+            res.innerHTML = `<div class="friend-item">
+                <div class="friend-info"><img src="${found.avt}"> <b>${found.name}</b></div>
+                <button class="btn btn-blue" style="width:80px;" onclick="sendReq('${found.name}')">Kết bạn</button>
+            </div>`;
+        }
+
+        function sendReq(targetName) {
+            let target = db.users.find(u => u.name === targetName);
+            if(!target.requests.includes(currentUser.name)) {
+                target.requests.push(currentUser.name);
+                saveDB();
+                alert("Đã gửi yêu cầu!");
+            }
+        }
+
+        function renderRequests() {
+            let list = document.getElementById('request-list');
+            document.getElementById('notif-count').innerText = currentUser.requests.length;
+            document.getElementById('notif-count').classList.toggle('hidden', currentUser.requests.length === 0);
+            list.innerHTML = currentUser.requests.map(r => `
+                <div class="friend-item">
+                    <b>${r}</b>
+                    <div>
+                        <button onclick="accept('${r}', true)" style="color:green; border:none; background:none; cursor:pointer;">Chấp nhận</button>
+                        <button onclick="accept('${r}', false)" style="color:red; border:none; background:none; cursor:pointer; margin-left:10px;">Xóa</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function accept(name, isYes) {
+            currentUser.requests = currentUser.requests.filter(r => r !== name);
+            if(isYes) {
+                currentUser.friends.push(name);
+                let other = db.users.find(u => u.name === name);
+                other.friends.push(currentUser.name);
+            }
+            saveDB();
+            updateUI();
+        }
+
+        function renderFriendList() {
+            let list = document.getElementById('friend-list');
+            list.innerHTML = currentUser.friends.map(f => {
+                let friendData = db.users.find(u => u.name === f);
+                return `
+                <div class="friend-item">
+                    <div class="friend-info" onclick="openChat('${f}')">
+                        <img src="${friendData.avt}"> <b>${f}</b>
+                    </div>
+                    <i class="fas fa-user-minus" style="color:#ccc; cursor:pointer;" onclick="unfriend('${f}')"></i>
+                </div>`;
+            }).join('');
+        }
+
+        function unfriend(name) {
+            currentUser.friends = currentUser.friends.filter(f => f !== name);
+            let other = db.users.find(u => u.name === name);
+            other.friends = other.friends.filter(f => f !== currentUser.name);
+            saveDB();
+            updateUI();
+        }
+
+        // MESSENGER LOGIC
+        function openChat(name) {
+            activeChat = name;
+            let friend = db.users.find(u => u.name === name);
+            document.getElementById('chat-window').classList.remove('hidden');
+            document.getElementById('chat-name').innerText = name;
+            document.getElementById('chat-avt').src = friend.avt;
+            renderMessages();
+        }
+
+        function closeChat() { document.getElementById('chat-window').classList.add('hidden'); }
+
+        function sendMessage() {
+            let txt = document.getElementById('chat-input').value;
+            if(!txt) return;
+            if(!currentUser.chats[activeChat]) currentUser.chats[activeChat] = [];
+            currentUser.chats[activeChat].push({ sender: 'me', text: txt });
+            
+            // Giả lập lưu cho cả người kia
+            let other = db.users.find(u => u.name === activeChat);
+            if(!other.chats[currentUser.name]) other.chats[currentUser.name] = [];
+            other.chats[currentUser.name].push({ sender: 'them', text: txt });
+
+            document.getElementById('chat-input').value = '';
+            saveDB();
+            renderMessages();
+        }
+
+        function renderMessages() {
+            let box = document.getElementById('chat-msgs');
+            let msgs = currentUser.chats[activeChat] || [];
+            box.innerHTML = msgs.map(m => `<div class="msg ${m.sender}">${m.text}</div>`).join('');
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // PROFILE LOGIC
+        function updateAvatar(e) {
+            let reader = new FileReader();
+            reader.onload = (ex) => {
+                currentUser.avt = ex.target.result;
+                // Cập nhật avt cho tất cả bài viết của user này
+                db.posts.forEach(p => { if(p.author === currentUser.name) p.avt = ex.target.result; });
+                saveDB();
+                updateUI();
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        }
+
+        function editName() {
+            let n = prompt("Nhập tên mới:", currentUser.name);
+            if(n) {
+                currentUser.name = n;
+                saveDB();
+                location.reload();
+            }
+        }
     </script>
 </body>
-</html>
+    
 # ChatMiFan
